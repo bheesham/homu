@@ -49,11 +49,13 @@ c['status'].append(HttpStatusPush(
 sudo apt-get install python3-venv
 
 pyvenv .venv
-.venv/bin/pip install -r requirements.txt
+.venv/bin/pip install -e .
 ```
 
 ## How to run
 
 ```sh
-.venv/bin/python main.py
+homu init <dir>
+# edit your configuration file in <dir>
+homu start <dir>
 ```

@@ -3,12 +3,14 @@ from threading import Thread
 import hmac
 import json
 import urllib.parse
-from main import PullReqState, parse_commands
-import utils
 from socketserver import ThreadingMixIn
 import github3
 import jinja2
 import requests
+import os
+
+from homu import state
+from homu import utils
 
 class RequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -164,7 +166,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 
                     repo_cfg = self.server.repo_cfgs[repo_name]
 
-                    if parse_commands(
+                    if utils.parse_commands(
                         body,
                         username,
                         repo_cfg['reviewers'],
@@ -186,7 +188,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                     state.head_advanced(head_sha)
 
                 elif action in ['opened', 'reopened']:
-                    state = PullReqState(pull_num, head_sha, '', self.server.repos[repo_name])
+                    state = state.PullReqState(pull_num, head_sha, '', self.server.repos[repo_name])
                     state.title = info['pull_request']['title']
                     state.body = info['pull_request']['body']
                     state.head_ref = info['pull_request']['head']['repo']['owner']['login'] + ':' + info['pull_request']['head']['ref']
@@ -235,7 +237,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 
                 repo_cfg = self.server.repo_cfgs[repo_name]
 
-                if parse_commands(
+                if utils.parse_commands(
                     body,
                     username,
                     repo_cfg['reviewers'],
@@ -347,11 +349,12 @@ class RequestHandler(BaseHTTPRequestHandler):
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     pass
 
-def start(cfg, states, queue_handler, repo_cfgs, repos, logger, buildbot_slots, my_username):
+def start(confDir, cfg, states, queue_handler, repo_cfgs, repos, logger, buildbot_slots, my_username):
     server = ThreadedHTTPServer(('', cfg['main']['port']), RequestHandler)
 
     tpls = {}
-    env = jinja2.Environment(loader=jinja2.FileSystemLoader('html'))
+    env = jinja2.Environment(loader=jinja2.FileSystemLoader(
+                                        os.path.join(confDir, 'html')))
     tpls['index'] = env.get_template('index.html')
     tpls['queue'] = env.get_template('queue.html')
 

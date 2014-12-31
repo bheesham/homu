@@ -1,15 +1,12 @@
-#!/usr/bin/env python3
-
 import github3
 import toml
 import json
 import re
-import server
-import utils
 import logging
 from threading import Thread
 import time
 import traceback
+import os
 
 class PullReqState:
     num = 0
@@ -219,12 +216,12 @@ def fetch_mergeability(states, repos):
 
         time.sleep(60)
 
-def main():
+def main(confDir):
     logger = logging.getLogger('homu')
     logger.setLevel(logging.INFO)
     logger.addHandler(logging.StreamHandler())
 
-    with open('cfg.toml') as fp:
+    with open(os.path.join(confDir, 'cfg.toml')) as fp:
         cfg = toml.loads(fp.read())
 
     gh = github3.login(token=cfg['main']['token'])
@@ -253,7 +250,7 @@ def main():
                     status = info.state
                     break
 
-            state = PullReqState(pull.number, pull.head.sha, status, repo)
+            state = state.PullReqState(pull.number, pull.head.sha, status, repo)
             state.title = pull.title
             state.body = pull.body
             state.head_ref = pull.head.repo[0] + ':' + pull.head.ref
@@ -262,7 +259,7 @@ def main():
 
             for comment in pull.iter_comments():
                 if comment.original_commit_id == pull.head.sha:
-                    parse_commands(
+                    utils.parse_commands(
                         comment.body,
                         comment.user.login,
                         repo_cfg['reviewers'],
@@ -272,7 +269,7 @@ def main():
                     )
 
             for comment in pull.iter_issue_comments():
-                parse_commands(
+                utils.parse_commands(
                     comment.body,
                     comment.user.login,
                     repo_cfg['reviewers'],
@@ -284,11 +281,8 @@ def main():
 
     logger.info('Done!')
 
-    server.start(cfg, states, queue_handler, repo_cfgs, repos, logger, buildbot_slots, my_username)
+    server.start(confDir, cfg, states, queue_handler, repo_cfgs, repos, logger, buildbot_slots, my_username)
 
     Thread(target=fetch_mergeability, args=[states, repos]).start()
 
     queue_handler()
-
-if __name__ == '__main__':
-    main()

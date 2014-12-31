@@ -1,0 +1,49 @@
+#!/usr/bin/env python
+import click
+from os import path, mkdir
+from pkg_resources import resource_filename
+from shutil import copytree
+from sys import exit
+
+from homu import server
+from homu import utils
+from homu import hqueue
+
+def confdir_exists(confDir, exitIfNo=False):
+    exists = path.exists(confDir) and path.isdir(confDir)
+    if not exists and exitIfNo:
+        click.echo('That location does not exist.')
+        exit(1)
+    return exists
+
+def init(confDir):
+    if confdir_exists(confDir):
+        click.echo('That location already exists, please specify elsewhere.')
+        exit(1)
+    copytree(resource_filename(__name__, "static"),
+             path.join(confDir))
+
+def start(confDir):
+    confdir_exists(confDir, True)
+    hqueue.main(confDir)
+
+@click.command()
+@click.argument('action', type=click.STRING)
+@click.argument('confdir')
+def cli(action, confdir):
+    """Homu is a continuous integration service bot for GitHub and Buildbot."""
+
+    possible_actions = ['init', 'start']
+
+    if action not in possible_actions:
+        click.echo('Invalid action; must choose one of: %s' % 
+                   ', '.join(possible_actions))
+        exit(1)
+    
+    if action == 'init':
+        init(confdir)
+    elif action == 'start':
+        start(confdir)
+
+if __name__ == "__main__":
+    cli()
